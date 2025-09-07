@@ -400,10 +400,25 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
     }
 };
 
+let ctx: OffscreenCanvasRenderingContext2D | null = null;
+let canvasWidth: number = 0;
+let canvasHeight: number = 0;
+
 self.onmessage = (event) => {
     const { canvas, style, useCustomColors, colors: customColors, width, height } = event.data;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, width, height);
+
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+        canvasWidth = width;
+        canvasHeight = height;
+        return;
+    }
+
+    if (!ctx) {
+        return; // Not initialized yet
+    }
+
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     const styleParams = treeStyles[style] || treeStyles.Classic;
 
@@ -417,8 +432,8 @@ self.onmessage = (event) => {
         leafColor: styleParams.leafColor,
     };
 
-    const canvasCenterX = width / 2;
-    const canvasBottom = height;
+    const canvasCenterX = canvasWidth / 2;
+    const canvasBottom = canvasHeight;
 
     const initialLen = styleParams.initialLen();
     const initialAngle = -90;

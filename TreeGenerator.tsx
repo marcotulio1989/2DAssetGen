@@ -7,6 +7,15 @@ import { useEffect, useRef, useState } from 'react';
 
 const treeStyleNames = ['Classic', 'Oak', 'Pine', 'Fantasy'];
 
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0}; // Return black on failure
+};
+
 export default function TreeGenerator({ canvasRef }) {
   const [style, setStyle] = useState('Classic');
   const [useCustomColors, setUseCustomColors] = useState(false);
@@ -14,31 +23,51 @@ export default function TreeGenerator({ canvasRef }) {
   const [customTwigColor, setCustomTwigColor] = useState('#465532');
   const [customLeafColor, setCustomLeafColor] = useState('#14961e');
   const [isLoading, setIsLoading] = useState(true);
+  const [regenCount, setRegenCount] = useState(0);
   const workerRef = useRef<Worker | null>(null);
-  const isInitialMount = useRef(true);
 
-
-  const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : { r: 0, g: 0, b: 0}; // Return black on failure
-  };
-
-  const generateTree = (useAnimation = false) => {
+  // Effect for initializing the worker and canvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
 
-    if (workerRef.current) {
-        workerRef.current.terminate();
-    }
-
-    const newWorker = new Worker(new URL('./tree.worker.ts', import.meta.url), { type: 'module' });
-    workerRef.current = newWorker;
+    const worker = new Worker(new URL('./tree.worker.ts', import.meta.url), { type: 'module' });
+    workerRef.current = worker;
 
     const offscreenCanvas = canvas.transferControlToOffscreen();
+
+    worker.postMessage({
+        canvas: offscreenCanvas,
+        width: canvas.width,
+        height: canvas.height,
+    }, [offscreenCanvas]);
+
+    worker.onmessage = (event) => {
+        if (event.data.done) {
+            setIsLoading(false);
+            if (canvas) {
+                canvas.style.transition = 'opacity 0.3s ease-in';
+                canvas.style.opacity = 1;
+            }
+        }
+    };
+
+    return () => {
+        worker.terminate();
+        workerRef.current = null;
+    };
+  }, [canvasRef]);
+
+  // Effect for drawing/redrawing the tree
+  useEffect(() => {
+    const worker = workerRef.current;
+    if (!worker) return;
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+        canvas.style.transition = 'opacity 0.1s ease-out';
+        canvas.style.opacity = 0;
+    }
 
     setIsLoading(true);
 
@@ -48,52 +77,17 @@ export default function TreeGenerator({ canvasRef }) {
         leafColor: customLeafColor,
     };
 
-    newWorker.postMessage({
-        canvas: offscreenCanvas,
-        width: canvas.width,
-        height: canvas.height,
+    worker.postMessage({
         style,
         useCustomColors,
         colors,
-    }, [offscreenCanvas]);
+    });
 
-    newWorker.onmessage = (event) => {
-        if (event.data.done) {
-            setIsLoading(false);
-            if (useAnimation) {
-              canvas.style.transition = 'opacity 0.3s ease-in';
-              canvas.style.opacity = 1;
-            } else {
-              canvas.style.opacity = 1;
-            }
-            newWorker.terminate();
-            workerRef.current = null;
-        }
-    };
+  }, [style, useCustomColors, customTrunkColor, customTwigColor, customLeafColor, regenCount]);
 
-    if (useAnimation) {
-      canvas.style.transition = 'opacity 0.1s ease-out';
-      canvas.style.opacity = 0;
-    }
-  };
-
-  useEffect(() => {
-    if (!canvasRef.current) return; 
-
-    if (isInitialMount.current) {
-      generateTree(true);
-      isInitialMount.current = false;
-    } else {
-      generateTree(false);
-    }
-
-    return () => {
-        if (workerRef.current) {
-            workerRef.current.terminate();
-        }
-    }
-  }, [style, useCustomColors, customTrunkColor, customTwigColor, customLeafColor, canvasRef]);
-
+  const handleRegenerate = () => {
+      setRegenCount(count => count + 1);
+  }
 
   return (
     <>
@@ -146,7 +140,7 @@ export default function TreeGenerator({ canvasRef }) {
       </div>
 
       <button
-        onClick={() => generateTree(true)}
+        onClick={handleRegenerate}
         disabled={isLoading}
         className="w-full max-w-xs mt-4 px-8 py-4 bg-green-600 text-white font-semibold rounded-full shadow-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 flex items-center justify-center text-lg">
         {isLoading ? 'Generating...' : 'Regenerate'}
