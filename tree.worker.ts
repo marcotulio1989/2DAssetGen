@@ -33,21 +33,27 @@ const treeStyles = {
     leafColor: () => `rgba(${Math.floor(20 + 30 * random())}, ${Math.floor(120 + 60 * random())}, ${Math.floor(20 + 30 * random())}, 0.8)`,
     leafSizeFactor: () => 0.3 + 0.2 * random(),
     midBranchChance: 0.75,
+    leafClusterBase: 1.2,
+    leafClusterAdd: 12,
+    leafOffsetMultiplier: 6,
   },
   Oak: {
     name: 'Oak',
-    initialLen: () => 40 + random() * 15, // Shorter, sturdier trunk
+    initialLen: () => 45 + random() * 20,
     maxDepth: () => 9 + Math.floor(random() * 2),
     branchFactor: 3,
-    lenFactor: () => 0.45 + 0.15 * random(), // Stubby, less tapered branches
-    angleFactor: () => -90 + 180 * random(), // Keep wide angles
-    trunkBendFactor: () => -25 + 50 * random(), // More gnarled, angular branches
+    lenFactor: () => 0.5 + 0.2 * random(),
+    angleFactor: () => -80 + 160 * random(),
+    trunkBendFactor: () => -15 + 30 * random(),
     trunkColor: { r: 60, g: 40, b: 20 },
     twigColor: { r: 80, g: 60, b: 40 },
     leafChance: 0.98,
     leafColor: () => `rgba(${Math.floor(10 * random())}, ${Math.floor(100 + 50 * random())}, ${Math.floor(20 * random())}, 0.8)`,
-    leafSizeFactor: () => 0.5 + 0.3 * random(), // Larger leaves for denser look
+    leafSizeFactor: () => 0.3 + 0.2 * random(),
     midBranchChance: 0.85,
+    leafClusterBase: 2.0,
+    leafClusterAdd: 25,
+    leafOffsetMultiplier: 3,
   },
   Pine: {
     name: 'Pine',
@@ -79,6 +85,9 @@ const treeStyles = {
     leafColor: () => `rgba(${Math.floor(150 + 100 * random())}, ${Math.floor(50 * random())}, ${Math.floor(150 + 100 * random())}, 0.7)`,
     leafSizeFactor: () => 0.35 + 0.2 * random(),
     midBranchChance: 0.75,
+    leafClusterBase: 1.2,
+    leafClusterAdd: 12,
+    leafOffsetMultiplier: 6,
     applyLeafEffect: (ctx) => { ctx.shadowColor = 'rgba(200, 200, 255, 0.8)'; ctx.shadowBlur = 15; },
     clearLeafEffect: (ctx) => { ctx.shadowBlur = 0; }
   },
@@ -327,13 +336,18 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
     }
     if (depth <= 5 && random() < style.leafChance) {
         if (style.applyLeafEffect) style.applyLeafEffect(ctx);
-        const leafClusterSize = Math.round(len * 1.2) + 12;
+
+        const clusterBase = style.leafClusterBase || 1.2;
+        const clusterAdd = style.leafClusterAdd || 12;
+        const offsetMultiplier = style.leafOffsetMultiplier || 6;
+
+        const leafClusterSize = Math.round(len * clusterBase) + clusterAdd;
         const baseLeafSize = len * style.leafSizeFactor();
         ctx.fillStyle = colors.leafColor();
         for (let i = 0; i < leafClusterSize; i++) {
             const leafSize = baseLeafSize * (0.8 + random() * 0.4);
-            const offsetX = (random() - 0.5) * leafSize * 6;
-            const offsetY = (random() - 0.5) * leafSize * 6;
+            const offsetX = (random() - 0.5) * leafSize * offsetMultiplier;
+            const offsetY = (random() - 0.5) * leafSize * offsetMultiplier;
             ctx.beginPath();
             ctx.arc(x2 + offsetX, y2 + offsetY, leafSize, 0, Math.PI * 2);
             ctx.fill();
