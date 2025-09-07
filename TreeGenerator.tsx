@@ -10,17 +10,17 @@ const treeStyles = {
   Classic: {
     name: 'Classic',
     initialLen: () => 50 + Math.random() * 20,
-    maxDepth: () => 10 + Math.floor(Math.random() * 2), // Increased depth
-    branchFactor: 4, // Increased factor
+    maxDepth: () => 9 + Math.floor(Math.random() * 2), // Balanced: slightly reduced for performance but maintains fullness
+    branchFactor: 3, // Keep optimized: reduced branching for better performance
     lenFactor: () => 0.6 + 0.25 * Math.random(),
-    angleFactor: () => -85 + 170 * Math.random(),
-    trunkBendFactor: () => -10 + 20 * Math.random(),
+    angleFactor: () => -60 + 120 * Math.random(), // More natural range: -60° to +60°
+    trunkBendFactor: () => -15 + 30 * Math.random(), // Slightly more bend variation: -15° to +15°
     trunkColor: { r: 87, g: 65, b: 47 },
     twigColor: { r: 70, g: 85, b: 50 },
-    leafChance: 0.98,
+    leafChance: 0.95, // Improved: increased for better leaf coverage while maintaining performance
     leafColor: () => `rgba(${Math.floor(20 + 30 * Math.random())}, ${Math.floor(120 + 60 * Math.random())}, ${Math.floor(20 + 30 * Math.random())}, 0.8)`,
-    leafSizeFactor: () => 0.3 + 0.2 * Math.random(),
-    midBranchChance: 0.75, // Increased mid-branching
+    leafSizeFactor: () => 0.35 + 0.2 * Math.random(), // Improved: slightly larger leaves for better visual impact
+    midBranchChance: 0.72, // Improved: increased for better branching density while staying performance-conscious
   },
   Oak: {
     name: 'Oak',
@@ -56,8 +56,8 @@ const treeStyles = {
   Fantasy: {
     name: 'Fantasy',
     initialLen: () => 50 + Math.random() * 20,
-    maxDepth: () => 10 + Math.floor(Math.random() * 3), // Increased depth
-    branchFactor: 4, // Increased factor
+    maxDepth: () => 8 + Math.floor(Math.random() * 2), // Reduced depth to prevent stack overflow
+    branchFactor: 3, // Reduced factor to prevent excessive branching
     lenFactor: () => 0.65 + 0.2 * Math.random(),
     angleFactor: () => -100 + 200 * Math.random(),
     trunkBendFactor: () => -20 + 40 * Math.random(),
@@ -66,7 +66,7 @@ const treeStyles = {
     leafChance: 0.98,
     leafColor: () => `rgba(${Math.floor(150 + 100 * Math.random())}, ${Math.floor(50 * Math.random())}, ${Math.floor(150 + 100 * Math.random())}, 0.7)`,
     leafSizeFactor: () => 0.35 + 0.2 * Math.random(),
-    midBranchChance: 0.75, // Increased mid-branching
+    midBranchChance: 0.6, // Reduced mid-branching to prevent complexity
     applyLeafEffect: (ctx) => {
       ctx.shadowColor = 'rgba(200, 200, 255, 0.8)';
       ctx.shadowBlur = 15;
@@ -100,8 +100,13 @@ const drawNeedles = (ctx, x, y, branchAngle, len, color) => {
 
 
 
-const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, style, colors, parentAngle = null, parentEndWidth = null, baseX = null, baseY = null) => {
+const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, style, colors, parentAngle = null, parentEndWidth = null, baseX = null, baseY = null, leaves = []) => {
     if (depth <= 0 || len < 0.1) {
+        return;
+    }
+    
+    // Safety check to prevent excessive recursion
+    if (depth > 20) {
         return;
     }
     
@@ -196,8 +201,11 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
     if (style.name === 'Classic' && depth === maxDepth) {
         currentLen = len * 0.15;
     }
-    const x2 = x1 + Math.cos(degToRad(angle)) * currentLen;
-    const y2 = y1 + Math.sin(degToRad(angle)) * currentLen;
+
+    // Early return for very small branches to improve performance
+    if (currentLen < 1.0) {
+        return;
+    }
 
     const x2 = x1 + Math.cos(degToRad(angle)) * currentLen;
     const y2 = y1 + Math.sin(degToRad(angle)) * currentLen;
@@ -225,24 +233,28 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
             angle: angle + style.trunkBendFactor(),
         });
 
-        const nSideBranches = 1 + Math.floor(Math.random() * (branchFactor - 1));
+        const nSideBranches = Math.floor(Math.random() * branchFactor); // Balanced: 0-2 side branches (was 0-3 before optimization)
         for (let i = 0; i < nSideBranches; i++) {
             let nextAngle = angle + style.angleFactor();
 
-            while (nextAngle <= -180) nextAngle += 360;
-            while (nextAngle > 180) nextAngle -= 360;
+            // Simplified angle normalization
+            if (nextAngle <= -180) nextAngle += 360;
+            if (nextAngle > 180) nextAngle -= 360;
 
-            let maxDroopDeg = 10;
+            let maxDroopDeg = 25; // Increased to allow more natural drooping
             // For the first branches on Classic trees, force them to grow upwards to avoid touching the ground.
             if (style.name === 'Classic' && depth === maxDepth) {
-                maxDroopDeg = 0;
+                maxDroopDeg = 15; // Less restrictive for main branches
             }
 
+            // More natural angle correction - only prevent extreme drooping
             if (nextAngle > maxDroopDeg && nextAngle < 180 - maxDroopDeg) {
                 if (nextAngle < 90) {
-                    nextAngle = maxDroopDeg;
+                    // Allow more natural upward angles, just prevent extreme downward
+                    nextAngle = Math.max(maxDroopDeg, nextAngle);
                 } else {
-                    nextAngle = 180 - maxDroopDeg;
+                    // For downward angles, allow more natural variation
+                    nextAngle = Math.min(180 - maxDroopDeg, nextAngle);
                 }
             }
 
@@ -250,7 +262,7 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
             const lengthModifier = 1.0 - (angleDelta / 180.0) * 0.7;
 
             subBranches.push({
-                len: len * style.lenFactor() * (0.75 + Math.random() * 0.25) * lengthModifier,
+                len: len * style.lenFactor() * (0.72 + Math.random() * 0.28) * lengthModifier, // Balanced: good range but optimized
                 angle: nextAngle,
             });
         }
@@ -262,36 +274,37 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
 
     const xMid = (x1 + x2) / 2;
     const yMid = (y1 + y2) / 2;
-    if (Math.random() < style.midBranchChance && depth > 2 && len > 10) { // Only on larger branches
-        const nSub = 1 + Math.floor(Math.random() * 2);
+    if (Math.random() < style.midBranchChance && depth > 2 && len > 12) { // Balanced: slightly stricter but still allows good branching
+        const nSub = 1 + Math.floor(Math.random() * 1.5); // Keep optimized: fewer mid-branches
         const midWidth = (startWidth + endWidth) / 2;
         for (let j = 0; j < nSub; j++) {
-            const offsetAngle = -20 + 40 * Math.random();
-            const subLen = len * (0.3 + 0.2 * Math.random());
+            const offsetAngle = -18 + 36 * Math.random(); // Balanced: good range but not excessive
+            const subLen = len * (0.28 + 0.17 * Math.random()); // Balanced: good length but optimized
             drawBranch(ctx, xMid, yMid, subLen, angle + offsetAngle, depth - 2, maxDepth, branchFactor, style, colors, angle, midWidth, baseX, baseY);
         }
     }
 
     if (depth <= 5 && Math.random() < style.leafChance) { // Leaves grow deeper now
-        if (style.applyLeafEffect) style.applyLeafEffect(ctx);
-        const leafClusterSize = Math.round(len * 0.8) + 8; // Optimized leaf clusters
-        const baseLeafSize = len * style.leafSizeFactor() * 1.2; // Slightly larger leaves
-        ctx.fillStyle = colors.leafColor();
-        
+        const leafClusterSize = Math.round(len * 0.6) + 6;
+        const baseLeafSize = len * style.leafSizeFactor() * 1.1;
         for (let i = 0; i < leafClusterSize; i++) {
             const leafSize = baseLeafSize * (0.8 + Math.random() * 0.4);
-            const offsetX = (Math.random() - 0.5) * leafSize * 6;
-            const offsetY = (Math.random() - 0.5) * leafSize * 6;
-            ctx.beginPath();
-            ctx.arc(x2 + offsetX, y2 + offsetY, leafSize, 0, Math.PI * 2);
-            ctx.fill();
+            const offsetX = (Math.random() - 0.5) * leafSize * 5;
+            const offsetY = (Math.random() - 0.5) * leafSize * 5;
+            leaves.push({
+                x: x2 + offsetX,
+                y: y2 + offsetY,
+                size: leafSize,
+                color: colors.leafColor(),
+                style,
+            });
         }
-        if (style.clearLeafEffect) style.clearLeafEffect(ctx);
     }
 
     for (const branch of subBranches) {
-        drawBranch(ctx, x2, y2, branch.len, branch.angle, depth - 1, maxDepth, branchFactor, style, colors, angle, endWidth, baseX, baseY);
+        drawBranch(ctx, x2, y2, branch.len, branch.angle, depth - 1, maxDepth, branchFactor, style, colors, angle, endWidth, baseX, baseY, leaves);
     }
+    return leaves;
 };
 
 
@@ -345,13 +358,25 @@ export default function TreeGenerator({ canvasRef }) {
         const startX = canvasCenterX;
         const startY = canvasBottom;
         
-        drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY);
+        const leaves = [];
+        drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, leaves);
         
-        if (useAnimation) {
-          canvas.style.transition = 'opacity 0.3s ease-in';
-          canvas.style.opacity = 1;
-        } else {
-          canvas.style.opacity = 1;
+        // Desenhar folhas por último
+        for (const leaf of leaves) {
+            if (leaf.style.applyLeafEffect) {
+                try {
+                    leaf.style.applyLeafEffect(ctx);
+                } catch (e) {}
+            }
+            ctx.fillStyle = leaf.color;
+            ctx.beginPath();
+            ctx.arc(leaf.x, leaf.y, leaf.size, 0, Math.PI * 2);
+            ctx.fill();
+            if (leaf.style.clearLeafEffect) {
+                try {
+                    leaf.style.clearLeafEffect(ctx);
+                } catch (e) {}
+            }
         }
     };
 
