@@ -83,14 +83,26 @@ g = Math.max(0, Math.min(255, g));
 
       // Draw sorted clumps
       for (const clump of clumps) {
-        // Project the 3D world coordinate to 2D screen coordinate
         const screenPos = projectToIso(clump.worldX, clump.worldY, clump.worldZ, canvas);
         
-        ctx.fillStyle = clump.color;
+        // 1. Draw a simple shadow
+        const shadowColor = `rgba(0, 0, 0, 0.15)`;
+        ctx.fillStyle = shadowColor;
         ctx.beginPath();
-        // Draw an ellipse to represent the clump in isometric view
-        ctx.ellipse(screenPos.x, screenPos.y, clump.size, clump.size * 0.8, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenPos.x, screenPos.y + clump.size * 0.1, clump.size * 1.1, clump.size * 0.9, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        // 2. Draw a cluster of smaller ellipses for texture
+        const subClumps = 3 + Math.floor(Math.random() * 3); // 3 to 5 sub-clumps
+        for (let i = 0; i < subClumps; i++) {
+            ctx.fillStyle = clump.color;
+            ctx.beginPath();
+            const offsetX = (Math.random() - 0.5) * clump.size * 0.6;
+            const offsetY = (Math.random() - 0.5) * clump.size * 0.4;
+            const subSize = clump.size * (0.5 + Math.random() * 0.4);
+            ctx.ellipse(screenPos.x + offsetX, screenPos.y + offsetY, subSize, subSize * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
       }
 
       if (useAnimation) {

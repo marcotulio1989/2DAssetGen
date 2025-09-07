@@ -74,18 +74,31 @@ export default function GrassGenerator({ canvasRef }) {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
+  const adjustRgbColor = (rgbString, amount) => {
+      const result = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(rgbString);
+      if (!result) return rgbString;
+      let [, r, g, b] = result.map(Number);
+      r = Math.max(0, Math.min(255, r + amount));
+      g = Math.max(0, Math.min(255, g + amount));
+      b = Math.max(0, Math.min(255, b + amount));
+      return `rgb(${r}, ${g}, ${b})`;
+  };
+
   const drawBlade = (ctx, x, y, height, width, color, curvature) => {
     const tipX = x;
     const tipY = y - height;
 
-    // Control point determines the bend. Place it halfway up and randomly to the side.
     const controlX = x + (Math.random() - 0.5) * curvature;
     const controlY = y - height * 0.5;
     
     const baseLeftX = x - width / 2;
     const baseRightX = x + width / 2;
 
-    ctx.fillStyle = color;
+    const gradient = ctx.createLinearGradient(x, y, x, tipY);
+    gradient.addColorStop(0, adjustRgbColor(color, -20)); // Darker at the base
+    gradient.addColorStop(1, adjustRgbColor(color, 20));  // Lighter at the tip
+
+    ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.moveTo(baseLeftX, y);
     ctx.quadraticCurveTo(controlX, controlY, tipX, tipY); // Left side curve
