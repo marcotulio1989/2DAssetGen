@@ -1,0 +1,5 @@
+{
+  "name": "Random 2D Asset Generator",
+  "description": "Generate random 2D assets like trees, and more, with the click of a button.",
+  "requestFramePermissions": []
+}
