@@ -1,75 +1,93 @@
 /* tslint:disable */
+
+// A simple seeded pseudo-random number generator
+let _seed = 0;
+function mulberry32(a) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+let random = mulberry32(_seed);
+
+function setSeed(seed) {
+    _seed = seed;
+    random = mulberry32(_seed);
+}
+
 // Configuration for different tree styles
 const treeStyles = {
   Classic: {
     name: 'Classic',
-    initialLen: () => 50 + Math.random() * 20,
-    maxDepth: () => 10 + Math.floor(Math.random() * 2), // Increased depth
+    initialLen: () => 50 + random() * 20,
+    maxDepth: () => 10 + Math.floor(random() * 2), // Increased depth
     branchFactor: 4, // Increased factor
-    lenFactor: () => 0.6 + 0.25 * Math.random(),
-    angleFactor: () => -85 + 170 * Math.random(),
-    trunkBendFactor: () => -10 + 20 * Math.random(),
+    lenFactor: () => 0.6 + 0.25 * random(),
+    angleFactor: () => -85 + 170 * random(),
+    trunkBendFactor: () => -10 + 20 * random(),
     trunkColor: { r: 87, g: 65, b: 47 },
     twigColor: { r: 70, g: 85, b: 50 },
     leafChance: 0.98,
-    leafColor: () => `rgba(${Math.floor(20 + 30 * Math.random())}, ${Math.floor(120 + 60 * Math.random())}, ${Math.floor(20 + 30 * Math.random())}, 0.8)`,
-    leafSizeFactor: () => 0.3 + 0.2 * Math.random(),
+    leafColor: () => `rgba(${Math.floor(20 + 30 * random())}, ${Math.floor(120 + 60 * random())}, ${Math.floor(20 + 30 * random())}, 0.8)`,
+    leafSizeFactor: () => 0.3 + 0.2 * random(),
     midBranchChance: 0.75, // Increased mid-branching
   },
   Oak: {
     name: 'Oak',
-    initialLen: () => 45 + Math.random() * 20,
-    maxDepth: () => 9 + Math.floor(Math.random() * 2), // Increased depth
+    initialLen: () => 45 + random() * 20,
+    maxDepth: () => 9 + Math.floor(random() * 2), // Increased depth
     branchFactor: 3, // Increased factor
-    lenFactor: () => 0.5 + 0.2 * Math.random(),
-    angleFactor: () => -80 + 160 * Math.random(),
-    trunkBendFactor: () => -15 + 30 * Math.random(),
+    lenFactor: () => 0.5 + 0.2 * random(),
+    angleFactor: () => -80 + 160 * random(),
+    trunkBendFactor: () => -15 + 30 * random(),
     trunkColor: { r: 60, g: 40, b: 20 },
     twigColor: { r: 80, g: 60, b: 40 },
     leafChance: 0.98,
-    leafColor: () => `rgba(${Math.floor(10 * Math.random())}, ${Math.floor(100 + 50 * Math.random())}, ${Math.floor(20 * Math.random())}, 0.8)`,
-    leafSizeFactor: () => 0.4 + 0.25 * Math.random(),
+    leafColor: () => `rgba(${Math.floor(10 * random())}, ${Math.floor(100 + 50 * random())}, ${Math.floor(20 * random())}, 0.8)`,
+    leafSizeFactor: () => 0.4 + 0.25 * random(),
     midBranchChance: 0.85, // Increased mid-branching
   },
   Pine: {
     name: 'Pine',
-    initialLen: () => 60 + Math.random() * 15, // Made pines a bit taller again
-    maxDepth: () => 11 + Math.floor(Math.random() * 2),
+    initialLen: () => 60 + random() * 15, // Made pines a bit taller again
+    maxDepth: () => 11 + Math.floor(random() * 2),
     branchFactor: 4, // For 2-4 side branches
-    lenFactor: () => 0.7 + 0.15 * Math.random(),
+    lenFactor: () => 0.7 + 0.15 * random(),
     angleFactor: () => 0, // Not used
-    trunkBendFactor: () => -5 + 10 * Math.random(),
+    trunkBendFactor: () => -5 + 10 * random(),
     trunkColor: { r: 50, g: 40, b: 30 },
     twigColor: { r: 30, g: 60, b: 30 },
     leafChance: 1.0, // Not used
-    leafColor: () => `rgba(0, ${Math.floor(80 + 40 * Math.random())}, 0, 0.7)`,
+    leafColor: () => `rgba(0, ${Math.floor(80 + 40 * random())}, 0, 0.7)`,
     leafSizeFactor: () => 0, // Not used
     midBranchChance: 0.0, // Disable mid-branching for a cleaner look
     coneSlope: 25, // Narrower cone shape
   },
   Fantasy: {
     name: 'Fantasy',
-    initialLen: () => 50 + Math.random() * 20,
-    maxDepth: () => 10 + Math.floor(Math.random() * 3), // Increased depth
+    initialLen: () => 50 + random() * 20,
+    maxDepth: () => 10 + Math.floor(random() * 3), // Increased depth
     branchFactor: 4, // Increased factor
-    lenFactor: () => 0.65 + 0.2 * Math.random(),
-    angleFactor: () => -100 + 200 * Math.random(),
-    trunkBendFactor: () => -20 + 40 * Math.random(),
+    lenFactor: () => 0.65 + 0.2 * random(),
+    angleFactor: () => -100 + 200 * random(),
+    trunkBendFactor: () => -20 + 40 * random(),
     trunkColor: { r: 80, g: 50, b: 120 },
     twigColor: { r: 150, g: 80, b: 200 },
     leafChance: 0.98,
-    leafColor: () => `rgba(${Math.floor(150 + 100 * Math.random())}, ${Math.floor(50 * Math.random())}, ${Math.floor(150 + 100 * Math.random())}, 0.7)`,
-    leafSizeFactor: () => 0.35 + 0.2 * Math.random(),
+    leafColor: () => `rgba(${Math.floor(150 + 100 * random())}, ${Math.floor(50 * random())}, ${Math.floor(150 + 100 * random())}, 0.7)`,
+    leafSizeFactor: () => 0.35 + 0.2 * random(),
     midBranchChance: 0.75, // Increased mid-branching
   },
   Dead: {
     name: 'Dead',
-    initialLen: () => 50 + Math.random() * 20,
-    maxDepth: () => 10 + Math.floor(Math.random() * 2),
+    initialLen: () => 50 + random() * 20,
+    maxDepth: () => 10 + Math.floor(random() * 2),
     branchFactor: 4,
-    lenFactor: () => 0.6 + 0.25 * Math.random(),
-    angleFactor: () => -85 + 170 * Math.random(),
-    trunkBendFactor: () => -10 + 20 * Math.random(),
+    lenFactor: () => 0.6 + 0.25 * random(),
+    angleFactor: () => -85 + 170 * random(),
+    trunkBendFactor: () => -10 + 20 * random(),
     trunkColor: { r: 80, g: 70, b: 60 },
     twigColor: { r: 70, g: 65, b: 60 },
     leafChance: 0,
@@ -352,19 +370,19 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
 
         const xMid = (x1 + x2) / 2;
         const yMid = (y1 + y2) / 2;
-        if (Math.random() < style.midBranchChance && depth > 2 && len > 10) {
-            const nSub = 1 + Math.floor(Math.random() * 2);
+        if (random() < style.midBranchChance && depth > 2 && len > 10) {
+            const nSub = 1 + Math.floor(random() * 2);
             const midWidth = (startWidth + endWidth) / 2;
             for (let j = 0; j < nSub; j++) {
-                const offsetAngle = -20 + 40 * Math.random();
-                const subLen = len * (0.3 + 0.2 * Math.random());
+                const offsetAngle = -20 + 40 * random();
+                const subLen = len * (0.3 + 0.2 * random());
                 drawBranch(ctx, xMid, yMid, subLen, angle + offsetAngle, depth - 2, maxDepth, branchFactor, style, colors, angle, midWidth, baseX, baseY, pass);
             }
         }
     }
 
     if (pass === 'all' || pass === 'leaves') {
-        if (depth <= 5 && Math.random() < style.leafChance) {
+        if (depth <= 5 && random() < style.leafChance) {
             if (style.applyLeafEffect) style.applyLeafEffect(ctx);
             const leafClusterSize = Math.round(len * 1.2) + 12;
             const baseLeafSize = len * style.leafSizeFactor();
@@ -436,15 +454,20 @@ self.onmessage = (event) => {
     const startX = canvasCenterX;
     const startY = canvasBottom;
 
+    // Create a new random seed for each generation to ensure it's unique
+    const seed = Math.random() * 1000000;
+
     if (styleParams.name === 'Fantasy') {
         // Two-pass rendering for Fantasy style
         const leafCanvas = new OffscreenCanvas(canvasWidth, canvasHeight);
         const leafCtx = leafCanvas.getContext('2d');
 
         // 1. Draw trunk and branches on the main canvas
+        setSeed(seed);
         drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, 'trunk');
 
         // 2. Draw leaves on the temporary canvas
+        setSeed(seed); // Use the same seed
         drawBranch(leafCtx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, 'leaves');
 
         // 3. Apply glow effect and draw leaves onto the main canvas
@@ -454,6 +477,7 @@ self.onmessage = (event) => {
         ctx.shadowBlur = 0; // Reset shadow
     } else {
         // Standard single-pass rendering for all other styles
+        setSeed(seed);
         drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, 'all');
     }
 
