@@ -5,7 +5,7 @@
 /* tslint:disable */
 import { useEffect, useRef, useState } from 'react';
 
-const treeStyleNames = ['Classic', 'Oak', 'Pine', 'Fantasy'];
+const treeStyleNames = ['Classic', 'Oak', 'Pine', 'Fantasy', 'Dead'];
 
 const hexToRgb = (hex) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);

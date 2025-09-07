@@ -63,11 +63,26 @@ const treeStyles = {
     midBranchChance: 0.75, // Increased mid-branching
     applyLeafEffect: (ctx) => {
       ctx.shadowColor = 'rgba(200, 200, 255, 0.8)';
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 5;
     },
     clearLeafEffect: (ctx) => {
       ctx.shadowBlur = 0;
     }
+  },
+  Dead: {
+    name: 'Dead',
+    initialLen: () => 50 + Math.random() * 20,
+    maxDepth: () => 10 + Math.floor(Math.random() * 2),
+    branchFactor: 4,
+    lenFactor: () => 0.6 + 0.25 * Math.random(),
+    angleFactor: () => -85 + 170 * Math.random(),
+    trunkBendFactor: () => -10 + 20 * Math.random(),
+    trunkColor: { r: 80, g: 70, b: 60 },
+    twigColor: { r: 70, g: 65, b: 60 },
+    leafChance: 0,
+    leafColor: () => `rgba(0,0,0,0)`,
+    leafSizeFactor: () => 0,
+    midBranchChance: 0.1,
   }
 };
 
