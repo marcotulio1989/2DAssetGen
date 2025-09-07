@@ -61,13 +61,6 @@ const treeStyles = {
     leafColor: () => `rgba(${Math.floor(150 + 100 * Math.random())}, ${Math.floor(50 * Math.random())}, ${Math.floor(150 + 100 * Math.random())}, 0.7)`,
     leafSizeFactor: () => 0.35 + 0.2 * Math.random(),
     midBranchChance: 0.75, // Increased mid-branching
-    applyLeafEffect: (ctx) => {
-      ctx.shadowColor = 'rgba(200, 200, 255, 0.8)';
-      ctx.shadowBlur = 5;
-    },
-    clearLeafEffect: (ctx) => {
-      ctx.shadowBlur = 0;
-    }
   },
   Dead: {
     name: 'Dead',
@@ -128,27 +121,28 @@ const getLineIntersection = (p1, p2, p3, p4) => {
 };
 
 
-const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, style, colors, parentAngle = null, parentEndWidth = null, baseX = null, baseY = null) => {
+const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, style, colors, parentAngle = null, parentEndWidth = null, baseX = null, baseY = null, pass = 'all') => {
     if (depth <= 0 || len < 0.1) {
         return;
     }
 
     // --- Specialized Pine Tree Algorithm ---
     if (style.name === 'Pine') {
+        // Pine logic is self-contained and doesn't have separate leaf effects, so we don't need to split it by pass.
+        // It can run in a single pass.
+        if (pass === 'leaves') return; // Pines draw their own "needles", not "leaves" in the traditional sense.
+
         let segmentLen = len;
         // For the first segment, shorten it to make the bare trunk about 10% of total height.
         if (depth === maxDepth) {
             segmentLen = len * 0.15;
         }
 
-        // The angle is influenced by random bending and conical pruning, not a biased tropism.
         let currentAngle = angle;
 
-        // Calculate tentative end point
         let x2 = x1 + Math.cos(degToRad(currentAngle)) * segmentLen;
         let y2 = y1 + Math.sin(degToRad(currentAngle)) * segmentLen;
 
-        // Conical pruning envelope
         if (baseX !== null && baseY !== null) {
             const coneTan = Math.tan(degToRad(style.coneSlope));
             const yFromBase = baseY - y2;
@@ -195,57 +189,39 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
         // --- Recursion (Whorled Branching) ---
         if (depth > 1) {
             const leaderAngle = currentAngle + style.trunkBendFactor();
-            drawBranch(ctx, x2, y2, len * style.lenFactor(), leaderAngle, depth - 1, maxDepth, branchFactor, style, colors, currentAngle, endWidth, baseX, baseY);
+            drawBranch(ctx, x2, y2, len * style.lenFactor(), leaderAngle, depth - 1, maxDepth, branchFactor, style, colors, currentAngle, endWidth, baseX, baseY, pass);
 
-            // A whorl of side branches, covering more of the trunk
             if (depth > 2 && depth < maxDepth) {
               const numSideBranches = 2 + Math.floor(Math.random() * (style.branchFactor - 1));
               for (let i = 0; i < numSideBranches; i++) {
                   const side = (i % 2 === 0) ? 1 : -1;
 
-                  let angleSpread = 85 + Math.random() * 20; // Default: 85 to 105 degrees from vertical
+                  let angleSpread = 85 + Math.random() * 20;
                   let sideLen = len * (0.5 + Math.random() * 0.3);
 
-                  // For the lowest branches, force a more upward angle and shorten them to guarantee clearance.
                   if (depth === maxDepth - 1) {
-                      angleSpread = 70 + Math.random() * 15; // Steeper angle: 70 to 85 degrees.
-                      sideLen *= 0.5; // Shorten them significantly to be safe.
+                      angleSpread = 70 + Math.random() * 15;
+                      sideLen *= 0.5;
                   }
 
                   const sideAngle = currentAngle + side * angleSpread;
 
-                  drawBranch(ctx, x2, y2, sideLen, sideAngle, depth - (1 + Math.random() * 2), maxDepth, branchFactor, style, colors, currentAngle, endWidth, baseX, baseY);
+                  drawBranch(ctx, x2, y2, sideLen, sideAngle, depth - (1 + Math.random() * 2), maxDepth, branchFactor, style, colors, currentAngle, endWidth, baseX, baseY, pass);
               }
             }
         }
 
-        // Needles
         if (depth <= 5 && len > 1) {
-            const needleColor = colors.leafColor();
+            const needleColor = typeof colors.leafColor === 'function' ? colors.leafColor() : colors.leafColor;
             drawNeedles(ctx, x2, y2, currentAngle, len, needleColor);
         }
 
-        return; // End execution for Pine here
+        return;
     }
 
     // --- Generic Tree Algorithm (for Classic, Oak, Fantasy) ---
-    let currentLen = len;
-    // For Classic trees, shorten the first trunk segment to lower the branching point.
-    if (style.name === 'Classic' && depth === maxDepth) {
-        currentLen = len * 0.15;
-    }
-    const x2 = x1 + Math.cos(degToRad(angle)) * currentLen;
-    const y2 = y1 + Math.sin(degToRad(angle)) * currentLen;
-
-    const { r: trunkR, g: trunkG, b: trunkB } = colors.trunkColor;
-    const { r: twigR, g: twigG, b: twigB } = colors.twigColor;
-    const t = Math.pow(depth / maxDepth, 1.5);
-    const r = Math.floor(twigR * (1 - t) + trunkR * t);
-    const g = Math.floor(twigG * (1 - t) + trunkG * t);
-    const b = Math.floor(twigB * (1 - t) + trunkB * t);
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-
-    const startWidth = parentEndWidth != null ? parentEndWidth : Math.max(0.5, len / 8);
+    const x2 = x1 + Math.cos(degToRad(angle)) * len;
+    const y2 = y1 + Math.sin(degToRad(angle)) * len;
 
     const subBranches = [];
     if (depth > 1) {
@@ -257,27 +233,21 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
         const nSideBranches = 1 + Math.floor(Math.random() * (branchFactor - 1));
         for (let i = 0; i < nSideBranches; i++) {
             let nextAngle = angle + style.angleFactor();
-
             while (nextAngle <= -180) nextAngle += 360;
             while (nextAngle > 180) nextAngle -= 360;
 
             let maxDroopDeg = 10;
-            // For the first branches on Classic trees, force them to grow upwards to avoid touching the ground.
             if (style.name === 'Classic' && depth === maxDepth) {
                 maxDroopDeg = 0;
             }
 
             if (nextAngle > maxDroopDeg && nextAngle < 180 - maxDroopDeg) {
-                if (nextAngle < 90) {
-                    nextAngle = maxDroopDeg;
-                } else {
-                    nextAngle = 180 - maxDroopDeg;
-                }
+                if (nextAngle < 90) nextAngle = maxDroopDeg;
+                else nextAngle = 180 - maxDroopDeg;
             }
 
             const angleDelta = Math.abs(nextAngle - angle);
             const lengthModifier = 1.0 - (angleDelta / 180.0) * 0.7;
-
             subBranches.push({
                 len: len * style.lenFactor() * (0.75 + Math.random() * 0.25) * lengthModifier,
                 angle: nextAngle,
@@ -285,133 +255,141 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
         }
     }
 
+    if (pass === 'all' || pass === 'trunk') {
+        const { r: trunkR, g: trunkG, b: trunkB } = colors.trunkColor;
+        const { r: twigR, g: twigG, b: twigB } = colors.twigColor;
+        const t = Math.pow(depth / maxDepth, 1.5);
+        const r = Math.floor(twigR * (1 - t) + trunkR * t);
+        const g = Math.floor(twigG * (1 - t) + trunkG * t);
+        const b = Math.floor(twigB * (1 - t) + trunkB * t);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
 
-    const avgNextLen = subBranches.length > 0 ? subBranches.reduce((sum, b) => sum + b.len, 0) / subBranches.length : 0;
-    const endWidth = avgNextLen > 0 ? Math.max(0.1, avgNextLen / 8) : 0.1;
+        const startWidth = parentEndWidth != null ? parentEndWidth : Math.max(0.5, len / 8);
+        const avgNextLen = subBranches.length > 0 ? subBranches.reduce((sum, b) => sum + b.len, 0) / subBranches.length : 0;
+        const endWidth = avgNextLen > 0 ? Math.max(0.1, avgNextLen / 8) : 0.1;
 
-    const angleRad = degToRad(angle);
-    const perp_dx = Math.cos(angleRad + Math.PI / 2);
-    const perp_dy = Math.sin(angleRad + Math.PI / 2);
+        const angleRad = degToRad(angle);
+        const perp_dx = Math.cos(angleRad + Math.PI / 2);
+        const perp_dy = Math.sin(angleRad + Math.PI / 2);
 
-    const p1_a = { x: x1 + perp_dx * startWidth / 2, y: y1 + perp_dy * startWidth / 2 };
-    const p1_b = { x: x1 - perp_dx * startWidth / 2, y: y1 - perp_dy * startWidth / 2 };
-    const p2_a = { x: x2 + perp_dx * endWidth / 2, y: y2 + perp_dy * endWidth / 2 };
-    const p2_b = { x: x2 - perp_dx * endWidth / 2, y: y2 - perp_dy * endWidth / 2 };
+        const p1_a = { x: x1 + perp_dx * startWidth / 2, y: y1 + perp_dy * startWidth / 2 };
+        const p1_b = { x: x1 - perp_dx * startWidth / 2, y: y1 - perp_dy * startWidth / 2 };
+        const p2_a = { x: x2 + perp_dx * endWidth / 2, y: y2 + perp_dy * endWidth / 2 };
+        const p2_b = { x: x2 - perp_dx * endWidth / 2, y: y2 - perp_dy * endWidth / 2 };
 
-    ctx.beginPath();
-
-    if (parentAngle === null) {
-        ctx.moveTo(p1_a.x, p1_a.y);
-        ctx.lineTo(p2_a.x, p2_a.y);
-        ctx.lineTo(p2_b.x, p2_b.y);
-        ctx.lineTo(p1_b.x, p1_b.y);
-    } else {
-        if (Math.abs(angle - parentAngle) < 0.1) {
-             // For nearly straight branches, just draw a simple trapezoid
-             // to avoid unstable intersection calculations that can crash the renderer.
-             ctx.moveTo(p1_a.x, p1_a.y);
-             ctx.lineTo(p2_a.x, p2_a.y);
-             ctx.lineTo(p2_b.x, p2_b.y);
-             ctx.lineTo(p1_b.x, p1_b.y);
+        ctx.beginPath();
+        if (parentAngle === null) {
+            ctx.moveTo(p1_a.x, p1_a.y);
+            ctx.lineTo(p2_a.x, p2_a.y);
+            ctx.lineTo(p2_b.x, p2_b.y);
+            ctx.lineTo(p1_b.x, p1_b.y);
         } else {
-            const parentAngleRad = degToRad(parentAngle);
-            const parent_perp_dx = Math.cos(parentAngleRad + Math.PI / 2);
-            const parent_perp_dy = Math.sin(parentAngleRad + Math.PI / 2);
-            const parent_p2_a = { x: x1 + parent_perp_dx * startWidth / 2, y: y1 + parent_perp_dy * startWidth / 2 };
-            const parent_p2_b = { x: x1 - parent_perp_dx * startWidth / 2, y: y1 - parent_perp_dy * startWidth / 2 };
-
-            let outer1, outer2, inner1, inner2, outer_p2, inner_p2;
-
-            if (angle > parentAngle) {
-                outer1 = parent_p2_b; inner1 = parent_p2_a;
-                outer2 = p1_b;        inner2 = p1_a;
-                outer_p2 = p2_b;      inner_p2 = p2_a;
+            if (Math.abs(angle - parentAngle) < 0.1) {
+                 ctx.moveTo(p1_a.x, p1_a.y);
+                 ctx.lineTo(p2_a.x, p2_a.y);
+                 ctx.lineTo(p2_b.x, p2_b.y);
+                 ctx.lineTo(p1_b.x, p1_b.y);
             } else {
-                outer1 = parent_p2_a; inner1 = parent_p2_b;
-                outer2 = p1_a;        inner2 = p1_b;
-                outer_p2 = p2_a;      inner_p2 = p2_b;
+                const parentAngleRad = degToRad(parentAngle);
+                const parent_perp_dx = Math.cos(parentAngleRad + Math.PI / 2);
+                const parent_perp_dy = Math.sin(parentAngleRad + Math.PI / 2);
+                const parent_p2_a = { x: x1 + parent_perp_dx * startWidth / 2, y: y1 + parent_perp_dy * startWidth / 2 };
+                const parent_p2_b = { x: x1 - parent_perp_dx * startWidth / 2, y: y1 - parent_perp_dy * startWidth / 2 };
+
+                let outer1, outer2, inner1, inner2, outer_p2, inner_p2;
+                if (angle > parentAngle) {
+                    outer1 = parent_p2_b; inner1 = parent_p2_a;
+                    outer2 = p1_b;        inner2 = p1_a;
+                    outer_p2 = p2_b;      inner_p2 = p2_a;
+                } else {
+                    outer1 = parent_p2_a; inner1 = parent_p2_b;
+                    outer2 = p1_a;        inner2 = p1_b;
+                    outer_p2 = p2_a;      inner_p2 = p2_b;
+                }
+
+                const parent_outer_line_p1 = { x: outer1.x - Math.cos(parentAngleRad) * 100, y: outer1.y - Math.sin(parentAngleRad) * 100 };
+                const child_outer_line_p2 = { x: outer2.x + Math.cos(angleRad) * 100, y: outer2.y + Math.sin(angleRad) * 100 };
+                const cornerPoint = getLineIntersection(parent_outer_line_p1, outer1, outer2, child_outer_line_p2);
+                const filletRadius = startWidth;
+
+                ctx.moveTo(inner1.x, inner1.y);
+                ctx.quadraticCurveTo(x1, y1, inner2.x, inner2.y);
+                ctx.lineTo(inner_p2.x, inner_p2.y);
+                ctx.lineTo(outer_p2.x, outer_p2.y);
+
+                if (cornerPoint) {
+                    ctx.arcTo(cornerPoint.x, cornerPoint.y, outer1.x, outer1.y, filletRadius);
+                } else {
+                    ctx.lineTo(outer2.x, outer2.y);
+                    ctx.lineTo(outer1.x, outer1.y);
+                }
             }
+        }
+        ctx.closePath();
+        ctx.fill();
 
-            const parent_outer_line_p1 = { x: outer1.x - Math.cos(parentAngleRad) * 100, y: outer1.y - Math.sin(parentAngleRad) * 100 };
-            const child_outer_line_p2 = { x: outer2.x + Math.cos(angleRad) * 100, y: outer2.y + Math.sin(angleRad) * 100 };
-            const cornerPoint = getLineIntersection(parent_outer_line_p1, outer1, outer2, child_outer_line_p2);
-            const filletRadius = startWidth;
+        if (subBranches.length > 1) {
+            subBranches.sort((a, b) => a.angle - b.angle);
+            const getBranchInnerVertex = (branchAngle) => {
+                const branchStartWidth = endWidth;
+                const rad = degToRad(branchAngle);
+                const perp_dx = Math.cos(rad + Math.PI / 2);
+                const perp_dy = Math.sin(rad + Math.PI / 2);
+                if (branchAngle < angle) return { x: x2 - perp_dx * branchStartWidth / 2, y: y2 - perp_dy * branchStartWidth / 2 };
+                else return { x: x2 + perp_dx * branchStartWidth / 2, y: y2 + perp_dy * branchStartWidth / 2 };
+            };
+            for (let i = 0; i < subBranches.length - 1; i++) {
+                const v1 = getBranchInnerVertex(subBranches[i].angle);
+                const v2 = getBranchInnerVertex(subBranches[i+1].angle);
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(v1.x, v1.y);
+                ctx.lineTo(v2.x, v2.y);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
 
-            ctx.moveTo(inner1.x, inner1.y);
-            ctx.quadraticCurveTo(x1, y1, inner2.x, inner2.y);
-            ctx.lineTo(inner_p2.x, inner_p2.y);
-            ctx.lineTo(outer_p2.x, outer_p2.y);
-
-            if (cornerPoint) {
-                ctx.arcTo(cornerPoint.x, cornerPoint.y, outer1.x, outer1.y, filletRadius);
-            } else {
-                ctx.lineTo(outer2.x, outer2.y);
-                ctx.lineTo(outer1.x, outer1.y);
+        const xMid = (x1 + x2) / 2;
+        const yMid = (y1 + y2) / 2;
+        if (Math.random() < style.midBranchChance && depth > 2 && len > 10) {
+            const nSub = 1 + Math.floor(Math.random() * 2);
+            const midWidth = (startWidth + endWidth) / 2;
+            for (let j = 0; j < nSub; j++) {
+                const offsetAngle = -20 + 40 * Math.random();
+                const subLen = len * (0.3 + 0.2 * Math.random());
+                drawBranch(ctx, xMid, yMid, subLen, angle + offsetAngle, depth - 2, maxDepth, branchFactor, style, colors, angle, midWidth, baseX, baseY, pass);
             }
         }
     }
 
-    ctx.closePath();
-    ctx.fill();
+    if (pass === 'all' || pass === 'leaves') {
+        if (depth <= 5 && Math.random() < style.leafChance) {
+            if (style.applyLeafEffect) style.applyLeafEffect(ctx);
+            const leafClusterSize = Math.round(len * 1.2) + 12;
+            const baseLeafSize = len * style.leafSizeFactor();
+            ctx.fillStyle = typeof colors.leafColor === 'function' ? colors.leafColor() : colors.leafColor;
 
-    if (subBranches.length > 1) {
-        subBranches.sort((a, b) => a.angle - b.angle);
-        const getBranchInnerVertex = (branchAngle) => {
-            const branchStartWidth = endWidth;
-            const rad = degToRad(branchAngle);
-            const perp_dx = Math.cos(rad + Math.PI / 2);
-            const perp_dy = Math.sin(rad + Math.PI / 2);
-            if (branchAngle < angle) {
-                return { x: x2 - perp_dx * branchStartWidth / 2, y: y2 - perp_dy * branchStartWidth / 2 };
-            } else {
-                return { x: x2 + perp_dx * branchStartWidth / 2, y: y2 + perp_dy * branchStartWidth / 2 };
+            for (let i = 0; i < leafClusterSize; i++) {
+                const leafSize = baseLeafSize * (0.8 + Math.random() * 0.4);
+                const offsetX = (Math.random() - 0.5) * leafSize * 6;
+                const offsetY = (Math.random() - 0.5) * leafSize * 6;
+                ctx.beginPath();
+                ctx.arc(x2 + offsetX, y2 + offsetY, leafSize, 0, Math.PI * 2);
+                ctx.fill();
             }
-        };
-        for (let i = 0; i < subBranches.length - 1; i++) {
-            const branch1 = subBranches[i];
-            const branch2 = subBranches[i+1];
-            const v1 = getBranchInnerVertex(branch1.angle);
-            const v2 = getBranchInnerVertex(branch2.angle);
-            ctx.beginPath();
-            ctx.moveTo(x2, y2);
-            ctx.lineTo(v1.x, v1.y);
-            ctx.lineTo(v2.x, v2.y);
-            ctx.closePath();
-            ctx.fill();
+            if (style.clearLeafEffect) style.clearLeafEffect(ctx);
         }
     }
 
-    const xMid = (x1 + x2) / 2;
-    const yMid = (y1 + y2) / 2;
-    if (Math.random() < style.midBranchChance && depth > 2 && len > 10) { // Only on larger branches
-        const nSub = 1 + Math.floor(Math.random() * 2);
-        const midWidth = (startWidth + endWidth) / 2;
-        for (let j = 0; j < nSub; j++) {
-            const offsetAngle = -20 + 40 * Math.random();
-            const subLen = len * (0.3 + 0.2 * Math.random());
-            drawBranch(ctx, xMid, yMid, subLen, angle + offsetAngle, depth - 2, maxDepth, branchFactor, style, colors, angle, midWidth, baseX, baseY);
-        }
-    }
-
-    if (depth <= 5 && Math.random() < style.leafChance) { // Leaves grow deeper now
-        if (style.applyLeafEffect) style.applyLeafEffect(ctx);
-        const leafClusterSize = Math.round(len * 1.2) + 12; // Denser leaf clusters
-        const baseLeafSize = len * style.leafSizeFactor();
-        ctx.fillStyle = typeof colors.leafColor === 'function' ? colors.leafColor() : colors.leafColor;
-
-        for (let i = 0; i < leafClusterSize; i++) {
-            const leafSize = baseLeafSize * (0.8 + Math.random() * 0.4);
-            const offsetX = (Math.random() - 0.5) * leafSize * 6;
-            const offsetY = (Math.random() - 0.5) * leafSize * 6;
-            ctx.beginPath();
-            ctx.arc(x2 + offsetX, y2 + offsetY, leafSize, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        if (style.clearLeafEffect) style.clearLeafEffect(ctx);
-    }
+    const endWidth = (pass === 'all' || pass === 'trunk')
+        ? (subBranches.length > 0 ? subBranches.reduce((sum, b) => sum + b.len, 0) / subBranches.length : 0) > 0
+            ? Math.max(0.1, (subBranches.reduce((sum, b) => sum + b.len, 0) / subBranches.length) / 8)
+            : 0.1
+        : 0;
 
     for (const branch of subBranches) {
-        drawBranch(ctx, x2, y2, branch.len, branch.angle, depth - 1, maxDepth, branchFactor, style, colors, angle, endWidth, baseX, baseY);
+        drawBranch(ctx, x2, y2, branch.len, branch.angle, depth - 1, maxDepth, branchFactor, style, colors, angle, endWidth, baseX, baseY, pass);
     }
 };
 
@@ -458,7 +436,26 @@ self.onmessage = (event) => {
     const startX = canvasCenterX;
     const startY = canvasBottom;
 
-    drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY);
+    if (styleParams.name === 'Fantasy') {
+        // Two-pass rendering for Fantasy style
+        const leafCanvas = new OffscreenCanvas(canvasWidth, canvasHeight);
+        const leafCtx = leafCanvas.getContext('2d');
+
+        // 1. Draw trunk and branches on the main canvas
+        drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, 'trunk');
+
+        // 2. Draw leaves on the temporary canvas
+        drawBranch(leafCtx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, 'leaves');
+
+        // 3. Apply glow effect and draw leaves onto the main canvas
+        ctx.shadowColor = 'rgba(200, 200, 255, 0.8)';
+        ctx.shadowBlur = 10;
+        ctx.drawImage(leafCanvas, 0, 0);
+        ctx.shadowBlur = 0; // Reset shadow
+    } else {
+        // Standard single-pass rendering for all other styles
+        drawBranch(ctx, startX, startY, initialLen, initialAngle, maxDepth, maxDepth, branchFactor, styleParams, colors, null, null, startX, startY, 'all');
+    }
 
     self.postMessage({ done: true });
 };
