@@ -75,7 +75,7 @@ const treeStyles = {
     trunkBendFactor: () => -20 + 40 * random(),
     trunkColor: { r: 80, g: 50, b: 120 },
     twigColor: { r: 150, g: 80, b: 200 },
-    leafChance: 0.98,
+    leafChance: 1.0,
     leafColor: () => `rgba(${Math.floor(150 + 100 * random())}, ${Math.floor(50 * random())}, ${Math.floor(150 + 100 * random())}, 0.7)`,
     leafSizeFactor: () => 0.35 + 0.2 * random(),
     midBranchChance: 0.75, // Increased mid-branching
