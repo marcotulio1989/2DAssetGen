@@ -17,10 +17,10 @@ const treeStyles = {
     trunkBendFactor: () => -15 + 30 * Math.random(), // Slightly more bend variation: -15° to +15°
     trunkColor: { r: 87, g: 65, b: 47 },
     twigColor: { r: 70, g: 85, b: 50 },
-    leafChance: 0.92, // Balanced: slightly reduced but still lush
+    leafChance: 0.95, // Improved: increased for better leaf coverage while maintaining performance
     leafColor: () => `rgba(${Math.floor(20 + 30 * Math.random())}, ${Math.floor(120 + 60 * Math.random())}, ${Math.floor(20 + 30 * Math.random())}, 0.8)`,
-    leafSizeFactor: () => 0.3 + 0.2 * Math.random(),
-    midBranchChance: 0.6, // Balanced: reduced but still provides good branching
+    leafSizeFactor: () => 0.35 + 0.2 * Math.random(), // Improved: slightly larger leaves for better visual impact
+    midBranchChance: 0.72, // Improved: increased for better branching density while staying performance-conscious
   },
   Oak: {
     name: 'Oak',
