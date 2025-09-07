@@ -82,7 +82,7 @@ const degToRad = (deg) => deg * Math.PI / 180;
 const drawNeedles = (ctx, x, y, branchAngle, len, color) => {
     ctx.strokeStyle = color;
     ctx.lineWidth = 0.75;
-    const needleCount = 5 + Math.random() * 5; // Sparser needles
+    const needleCount = 4 + Math.random() * 4; // Sparser needles
     const needleLength = len; // Shorter needles
     const spread = 70; // degrees
 
@@ -98,25 +98,6 @@ const drawNeedles = (ctx, x, y, branchAngle, len, color) => {
     }
 };
 
-// Helper function to find the intersection of two lines defined by four points.
-const getLineIntersection = (p1, p2, p3, p4) => {
-    const { x: x1, y: y1 } = p1;
-    const { x: x2, y: y2 } = p2;
-    const { x: x3, y: y3 } = p3;
-    const { x: x4, y: y4 } = p4;
-
-    const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-
-    if (denominator === 0) {
-        return null; // Lines are parallel
-    }
-
-    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
-    const ix = x1 + t * (x2 - x1);
-    const iy = y1 + t * (y2 - y1);
-    
-    return { x: ix, y: iy };
-};
 
 
 const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, style, colors, parentAngle = null, parentEndWidth = null, baseX = null, baseY = null) => {
@@ -159,29 +140,19 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
         const startWidth = parentEndWidth != null ? parentEndWidth : Math.max(0.5, len / 8);
         const endWidth = Math.max(0.1, (len * style.lenFactor()) / 8);
         
-        const angleRad = degToRad(currentAngle);
-        const perp_dx = Math.cos(angleRad + Math.PI / 2);
-        const perp_dy = Math.sin(angleRad + Math.PI / 2);
-        const p1_a = { x: x1 + perp_dx * startWidth / 2, y: y1 + perp_dy * startWidth / 2 };
-        const p1_b = { x: x1 - perp_dx * startWidth / 2, y: y1 - perp_dy * startWidth / 2 };
-        const p2_a = { x: x2 + perp_dx * endWidth / 2, y: y2 + perp_dy * endWidth / 2 };
-        const p2_b = { x: x2 - perp_dx * endWidth / 2, y: y2 - perp_dy * endWidth / 2 };
-        
         const { r: trunkR, g: trunkG, b: trunkB } = colors.trunkColor;
         const { r: twigR, g: twigG, b: twigB } = colors.twigColor;
         const t = Math.pow(depth / maxDepth, 1.5);
         const r = Math.floor(twigR * (1 - t) + trunkR * t);
         const g = Math.floor(twigG * (1 - t) + trunkG * t);
         const b = Math.floor(twigB * (1 - t) + trunkB * t);
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        
+        ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.lineWidth = startWidth;
+
         ctx.beginPath();
-        ctx.moveTo(p1_a.x, p1_a.y);
-        ctx.lineTo(p2_a.x, p2_a.y);
-        ctx.lineTo(p2_b.x, p2_b.y);
-        ctx.lineTo(p1_b.x, p1_b.y);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
 
         // --- Recursion (Whorled Branching) ---
         if (depth > 1) {
@@ -228,15 +199,24 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
     const x2 = x1 + Math.cos(degToRad(angle)) * currentLen;
     const y2 = y1 + Math.sin(degToRad(angle)) * currentLen;
 
+    const x2 = x1 + Math.cos(degToRad(angle)) * currentLen;
+    const y2 = y1 + Math.sin(degToRad(angle)) * currentLen;
+
     const { r: trunkR, g: trunkG, b: trunkB } = colors.trunkColor;
     const { r: twigR, g: twigG, b: twigB } = colors.twigColor;
     const t = Math.pow(depth / maxDepth, 1.5);
     const r = Math.floor(twigR * (1 - t) + trunkR * t);
     const g = Math.floor(twigG * (1 - t) + trunkG * t);
     const b = Math.floor(twigB * (1 - t) + trunkB * t);
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
 
     const startWidth = parentEndWidth != null ? parentEndWidth : Math.max(0.5, len / 8);
+    ctx.lineWidth = startWidth;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
 
     const subBranches = [];
     if (depth > 1) {
@@ -280,98 +260,6 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
     const avgNextLen = subBranches.length > 0 ? subBranches.reduce((sum, b) => sum + b.len, 0) / subBranches.length : 0;
     const endWidth = avgNextLen > 0 ? Math.max(0.1, avgNextLen / 8) : 0.1;
 
-    const angleRad = degToRad(angle);
-    const perp_dx = Math.cos(angleRad + Math.PI / 2);
-    const perp_dy = Math.sin(angleRad + Math.PI / 2);
-
-    const p1_a = { x: x1 + perp_dx * startWidth / 2, y: y1 + perp_dy * startWidth / 2 };
-    const p1_b = { x: x1 - perp_dx * startWidth / 2, y: y1 - perp_dy * startWidth / 2 };
-    const p2_a = { x: x2 + perp_dx * endWidth / 2, y: y2 + perp_dy * endWidth / 2 };
-    const p2_b = { x: x2 - perp_dx * endWidth / 2, y: y2 - perp_dy * endWidth / 2 };
-
-    ctx.beginPath();
-    
-    if (parentAngle === null) {
-        ctx.moveTo(p1_a.x, p1_a.y);
-        ctx.lineTo(p2_a.x, p2_a.y);
-        ctx.lineTo(p2_b.x, p2_b.y);
-        ctx.lineTo(p1_b.x, p1_b.y);
-    } else {
-        if (Math.abs(angle - parentAngle) < 0.1) {
-             // For nearly straight branches, just draw a simple trapezoid
-             // to avoid unstable intersection calculations that can crash the renderer.
-             ctx.moveTo(p1_a.x, p1_a.y);
-             ctx.lineTo(p2_a.x, p2_a.y);
-             ctx.lineTo(p2_b.x, p2_b.y);
-             ctx.lineTo(p1_b.x, p1_b.y);
-        } else {
-            const parentAngleRad = degToRad(parentAngle);
-            const parent_perp_dx = Math.cos(parentAngleRad + Math.PI / 2);
-            const parent_perp_dy = Math.sin(parentAngleRad + Math.PI / 2);
-            const parent_p2_a = { x: x1 + parent_perp_dx * startWidth / 2, y: y1 + parent_perp_dy * startWidth / 2 };
-            const parent_p2_b = { x: x1 - parent_perp_dx * startWidth / 2, y: y1 - parent_perp_dy * startWidth / 2 };
-
-            let outer1, outer2, inner1, inner2, outer_p2, inner_p2;
-            
-            if (angle > parentAngle) {
-                outer1 = parent_p2_b; inner1 = parent_p2_a;
-                outer2 = p1_b;        inner2 = p1_a;
-                outer_p2 = p2_b;      inner_p2 = p2_a;
-            } else {
-                outer1 = parent_p2_a; inner1 = parent_p2_b;
-                outer2 = p1_a;        inner2 = p1_b;
-                outer_p2 = p2_a;      inner_p2 = p2_b;
-            }
-
-            const parent_outer_line_p1 = { x: outer1.x - Math.cos(parentAngleRad) * 100, y: outer1.y - Math.sin(parentAngleRad) * 100 };
-            const child_outer_line_p2 = { x: outer2.x + Math.cos(angleRad) * 100, y: outer2.y + Math.sin(angleRad) * 100 };
-            const cornerPoint = getLineIntersection(parent_outer_line_p1, outer1, outer2, child_outer_line_p2);
-            const filletRadius = startWidth;
-
-            ctx.moveTo(inner1.x, inner1.y);
-            ctx.quadraticCurveTo(x1, y1, inner2.x, inner2.y);
-            ctx.lineTo(inner_p2.x, inner_p2.y);
-            ctx.lineTo(outer_p2.x, outer_p2.y);
-            
-            if (cornerPoint) {
-                ctx.arcTo(cornerPoint.x, cornerPoint.y, outer1.x, outer1.y, filletRadius);
-            } else {
-                ctx.lineTo(outer2.x, outer2.y);
-                ctx.lineTo(outer1.x, outer1.y);
-            }
-        }
-    }
-    
-    ctx.closePath();
-    ctx.fill();
-
-    if (subBranches.length > 1) {
-        subBranches.sort((a, b) => a.angle - b.angle);
-        const getBranchInnerVertex = (branchAngle) => {
-            const branchStartWidth = endWidth;
-            const rad = degToRad(branchAngle);
-            const perp_dx = Math.cos(rad + Math.PI / 2);
-            const perp_dy = Math.sin(rad + Math.PI / 2);
-            if (branchAngle < angle) {
-                return { x: x2 - perp_dx * branchStartWidth / 2, y: y2 - perp_dy * branchStartWidth / 2 };
-            } else {
-                return { x: x2 + perp_dx * branchStartWidth / 2, y: y2 + perp_dy * branchStartWidth / 2 };
-            }
-        };
-        for (let i = 0; i < subBranches.length - 1; i++) {
-            const branch1 = subBranches[i];
-            const branch2 = subBranches[i+1];
-            const v1 = getBranchInnerVertex(branch1.angle);
-            const v2 = getBranchInnerVertex(branch2.angle);
-            ctx.beginPath();
-            ctx.moveTo(x2, y2);
-            ctx.lineTo(v1.x, v1.y);
-            ctx.lineTo(v2.x, v2.y);
-            ctx.closePath();
-            ctx.fill();
-        }
-    }
-
     const xMid = (x1 + x2) / 2;
     const yMid = (y1 + y2) / 2;
     if (Math.random() < style.midBranchChance && depth > 2 && len > 10) { // Only on larger branches
@@ -386,8 +274,8 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
 
     if (depth <= 5 && Math.random() < style.leafChance) { // Leaves grow deeper now
         if (style.applyLeafEffect) style.applyLeafEffect(ctx);
-        const leafClusterSize = Math.round(len * 1.2) + 12; // Denser leaf clusters
-        const baseLeafSize = len * style.leafSizeFactor();
+        const leafClusterSize = Math.round(len * 0.8) + 8; // Optimized leaf clusters
+        const baseLeafSize = len * style.leafSizeFactor() * 1.2; // Slightly larger leaves
         ctx.fillStyle = colors.leafColor();
         
         for (let i = 0; i < leafClusterSize; i++) {
@@ -432,6 +320,7 @@ export default function TreeGenerator({ canvasRef }) {
     const draw = () => {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineCap = 'round';
         
         const styleParams = treeStyles[style] || treeStyles.Classic;
 
