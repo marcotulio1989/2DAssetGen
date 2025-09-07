@@ -241,6 +241,7 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
     const x2 = x1 + Math.cos(degToRad(angle)) * len;
     const y2 = y1 + Math.sin(degToRad(angle)) * len;
 
+    // --- All calculations and random decisions happen here, before any `pass` checks ---
     const subBranches = [];
     if (depth > 1) {
         subBranches.push({
@@ -269,6 +270,17 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
             subBranches.push({
                 len: len * style.lenFactor() * (0.75 + Math.random() * 0.25) * lengthModifier,
                 angle: nextAngle,
+            });
+        }
+    }
+
+    const midBranches = [];
+    if (random() < style.midBranchChance && depth > 2 && len > 10) {
+        const nSub = 1 + Math.floor(random() * 2);
+        for (let j = 0; j < nSub; j++) {
+            midBranches.push({
+                offsetAngle: -20 + 40 * random(),
+                subLen: len * (0.3 + 0.2 * random()),
             });
         }
     }
@@ -370,14 +382,11 @@ const drawBranch = (ctx, x1, y1, len, angle, depth, maxDepth, branchFactor, styl
 
         const xMid = (x1 + x2) / 2;
         const yMid = (y1 + y2) / 2;
-        if (random() < style.midBranchChance && depth > 2 && len > 10) {
-            const nSub = 1 + Math.floor(random() * 2);
-            const midWidth = (startWidth + endWidth) / 2;
-            for (let j = 0; j < nSub; j++) {
-                const offsetAngle = -20 + 40 * random();
-                const subLen = len * (0.3 + 0.2 * random());
-                drawBranch(ctx, xMid, yMid, subLen, angle + offsetAngle, depth - 2, maxDepth, branchFactor, style, colors, angle, midWidth, baseX, baseY, pass);
-            }
+
+        // Draw mid-branches using pre-calculated properties
+        const midWidth = (startWidth + endWidth) / 2;
+        for (const midBranch of midBranches) {
+            drawBranch(ctx, xMid, yMid, midBranch.subLen, angle + midBranch.offsetAngle, depth - 2, maxDepth, branchFactor, style, colors, angle, midWidth, baseX, baseY, pass);
         }
     }
 
